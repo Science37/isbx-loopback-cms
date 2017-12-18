@@ -21,11 +21,13 @@ angular.module('dashboard.directives.ModelFieldMultiSelect', [])
       options: '=options',
       data: '=ngModel',
       modelData: '=modelData',
-      disabled: '=ngDisabled'
+      disabled: '=ngDisabled',
+      ngBlur: '&',
     },
     link: function(scope, element, attrs, ngModel) {
       
       var property = scope.property;
+      var hasDataChanged;
       
       function init() {
         scope.multiSelectOptions = [];
@@ -129,6 +131,7 @@ angular.module('dashboard.directives.ModelFieldMultiSelect', [])
       }
 
       function clickMultiSelectCheckbox(index, selectedOption) {
+        hasDataChanged = true;
         var output = property.display.output === 'array' ? [] : property.display.output === 'object' ? {} : '';
 
         for (var i in scope.selected) {
@@ -152,6 +155,15 @@ angular.module('dashboard.directives.ModelFieldMultiSelect', [])
         if (property.display.output === 'comma' && output.length > 0) output = output.substring(0, output.length-1); //remove last comma
 
         scope.data = output;
+
+        // asynchronous behavior because moving data up chain
+        setTimeout(function() {
+          if (scope.ngBlur && hasDataChanged) {
+            scope.ngBlur({key: scope.key})
+          }
+          hasDataChanged = false
+        // this may cause a non optimal user experience, but reducing ability to bypass the check
+        }, 1);
 
         // Note: breaking changes on onModelFieldMultiSelectCheckboxClick emit below after Angular 1.6.4 upgrade
         // due to ModelFieldMultiSelect rewrite

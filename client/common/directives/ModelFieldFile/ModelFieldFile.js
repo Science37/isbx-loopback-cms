@@ -23,7 +23,7 @@ angular.module('dashboard.directives.ModelFieldFile', [
 
   return {
     restrict: 'E',
-    template: '<button class="btn btn-default select-file" ng-hide="disabled">{{ selectFileButtonText }}</button> \
+    template: '<button class="btn btn-default select-file" ng-hide="disabled" >{{ selectFileButtonText }}</button> \
       <input type="file" ng-file-select="onFileSelect($files)" ng-hide="disabled"> \
       <button ng-if="filename" class="btn btn-danger fa fa-trash" ng-click="clear($event)" ng-hide="disabled"></button> \
       <span class="file-upload-info" ng-if="filename"><i class="fa {{getFileIcon(filename)}}"></i>&nbsp;&nbsp;{{ filename }}&nbsp;&nbsp;<span ng-if="fileUrl">(<a download href="{{fileUrl}}">download</a><span ng-if="previewUrl"> | <a target="_blank" href="{{previewUrl}}">preview</a></span>)</span></span> \
@@ -33,7 +33,8 @@ angular.module('dashboard.directives.ModelFieldFile', [
       options: '=options',
       disabled: '=ngDisabled',
       data: '=ngModel',
-      modelData: '=modelData'
+      modelData: '=modelData',
+      ngChange: '&',
     },
     link: function(scope, element, attrs) {
 
@@ -52,9 +53,9 @@ angular.module('dashboard.directives.ModelFieldFile', [
       /**
          * scope.data updates async from controller so need to watch for the first change only
          */
-        var unwatch = scope.$watch('data', function(data) {
+        var unwatch = scope.$watchCollection('data', function(data) {
           if (data) {
-            unwatch(); //Remove the watch
+            // unwatch(); // Initially for removing the watcher, but with edit reason reintroduced // Remove the watch
             if (scope.data && scope.data && scope.data.filename) {
               //expects scope.data to be an object with {filename, fileUrl}
               scope.filename = scope.data.filename;
@@ -112,6 +113,8 @@ angular.module('dashboard.directives.ModelFieldFile', [
         };
 
         scope.onFileSelect = function($files) {
+          // clear the data on a new file select
+          if (scope.data) scope.clear({}, true);
           //$files: an array of files selected, each file has name, size, and type.
           if ($files.length < 1) return;
           var selectedFile = $files[0];
@@ -122,17 +125,22 @@ angular.module('dashboard.directives.ModelFieldFile', [
 
         };
 
-        scope.clear = function(e) {
-          e.preventDefault();
-          if (scope.options.confirm) {
+        scope.clear = function(e, isSkipConfirm) {
+          if (e && e.preventDefault) e.preventDefault();
+          if (scope.options.confirm && !isSkipConfirm) {
             // Requires confirmation alert
-            if (!confirm('Are you sure you would like to clear the file?')) {
+            if (!confirm('Are you sure you would like to remove the file?')) {
               return;
             }
           }
           scope.data = null;
           scope.filename = null;
           scope.fileUrl = null;
+          if (scope.ngChange) {
+            setTimeout(function() {
+              scope.ngChange({key: scope.key})
+            }, 1)
+          }
         };
 
         //Prevent accidental file drop
@@ -158,7 +166,7 @@ angular.module('dashboard.directives.ModelFieldFile', [
           $document.off("dragover");
           $(window).off("mouseleave");
         });
-        
+
     }
   };
 })

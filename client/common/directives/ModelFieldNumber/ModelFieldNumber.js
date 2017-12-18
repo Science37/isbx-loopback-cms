@@ -20,12 +20,14 @@ angular.module('dashboard.directives.ModelFieldNumber', [])
       modelData: '=modelData',
       disabled: '=ngDisabled',
       required: '=ngRequired',
-      ngError: '&'
+      ngError: '&',
+      ngEditReason: '&',
     },
     link: function(scope, element, attrs, ngModel) {
 
       var property = scope.property;
       var promise;
+      var hasDataChanged;
 
       function init() {
 
@@ -48,6 +50,8 @@ angular.module('dashboard.directives.ModelFieldNumber', [])
        * @param event
        */
       function checkNumber(event) {
+        hasDataChanged = true;
+
         //Get current cursor input position
         var cursorPosition = 0;
         if (document.selection) {
@@ -120,6 +124,11 @@ angular.module('dashboard.directives.ModelFieldNumber', [])
           }
           if (scope.ngError) scope.ngError({error: null});
         }
+
+        if (scope.ngEditReason && hasDataChanged) {
+          scope.ngEditReason({key: scope.key})
+        }
+        hasDataChanged = false
       }
 
       /**

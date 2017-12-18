@@ -37,7 +37,8 @@ angular.module('dashboard.directives.ModelFieldVideo', [
       options: '=options',
       disabled: '=ngDisabled',
       data: '=ngModel',
-      modelData: '=modelData'
+      modelData: '=modelData',
+      ngChange: '&',
     },
     link: function(scope, element, attrs) {
       var selectedFile = null;
@@ -47,9 +48,9 @@ angular.module('dashboard.directives.ModelFieldVideo', [
       /**
        * scope.data updates async from controller so need to watch for the first change only
        */
-      var unwatch = scope.$watch('data', function(data) {
+      var unwatch = scope.$watchCollection('data', function(data) {
         if (data) {
-          unwatch(); //Remove the watch
+          // unwatch(); // Initially for removing the watcher, but with edit reason reintroduced // Remove the watch
           if (typeof data === "string") {
             scope.videoUrl = $sce.trustAsResourceUrl(data);
           } else if (typeof data === "object") {
@@ -74,9 +75,16 @@ angular.module('dashboard.directives.ModelFieldVideo', [
         //Clear out an existing selected image
         scope.data = null; //null out the data field
         delete scope.videoUrl; //remove the preview video
+        if (scope.ngChange) {
+          setTimeout(function() {
+            scope.ngChange({key: scope.key})
+          }, 1)
+        }
       };
 
       scope.onFileSelect = function($files) {
+        // clear the data on a new file select
+        if (scope.data) scope.clear();
         //$files: an array of files selected, each file has name, size, and type.
         if ($files.length < 1) return;
         selectedFile = $files[0];

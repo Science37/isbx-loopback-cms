@@ -55,7 +55,8 @@ angular.module('dashboard.directives.ModelFieldReference', [
       rowData: "=ngRowData", //for use in the model list edit mode
       textOutputPath: '=ngTextOutputPath', //output the selected text to this path in the rowData
       onModelChanged: "&onModelChanged",
-      appendToBody: "=appendToBody"
+      appendToBody: "=appendToBody",
+      ngBlur: '&',
     },
     link: function(scope, element, attrs) {
 
@@ -337,6 +338,10 @@ angular.module('dashboard.directives.ModelFieldReference', [
             //Needed in a timeout so the scope.data gets saved
             //before emitting ngGridEventEndCellEdit
             scope.$emit('ngGridEventEndCellEdit');
+
+            if (scope.ngBlur) {
+              scope.ngBlur({key: scope.key})
+            }
           }, 1);
        }
      };
