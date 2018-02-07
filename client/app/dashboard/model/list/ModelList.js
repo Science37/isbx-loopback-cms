@@ -81,6 +81,11 @@ angular.module('dashboard.Dashboard.Model.List', [
     $scope.hideSideMenu();
     if ($window.ga) $window.ga('send', 'pageview', { page: $location.path() });
 
+    //Make a column visible
+    $scope.$on('changeColumnVisibility', function (event, arg) {
+      changeColumnVisibility(arg.index);
+    })
+
     //Check if Chart needs to be displayed
     $scope.gridContainerTopMargin = 0;
     if ($scope.action.options.chart) {
@@ -156,6 +161,11 @@ angular.module('dashboard.Dashboard.Model.List', [
       $scope.cancelButtonText = Config.serverParams.strings.cancelButton;
       $scope.saveButtonText = Config.serverParams.strings.saveButton;
     }
+  }
+
+  //Change visibility of a column 
+  function changeColumnVisibility(index, visibility) {
+    $scope.columns[index].visible = visibility;
   }
 
   function getColumnDefinition() {
