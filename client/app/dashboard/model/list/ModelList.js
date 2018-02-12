@@ -179,7 +179,8 @@ angular.module('dashboard.Dashboard.Model.List', [
 
   //Change visibility of a column 
   function updateColumnVisibility(column, visibility) {
-    $scope.columns[_.findIndex($scope.columns, {field: column})].visible = visibility;
+    var index = _.findIndex($scope.columns, {field: column});
+    if (index) $scope.columns[index].visible = visibility;;
   }
 
   $scope.clickSelectAll = function () {
