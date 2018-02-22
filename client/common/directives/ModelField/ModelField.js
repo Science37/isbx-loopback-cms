@@ -157,6 +157,17 @@ angular.module('dashboard.directives.ModelField', [
             </div>\
           </div>';
         break;
+      case 'statuses':
+        template = '<label class="col-sm-2 control-label" ng-if="data.isQualifyingProject" >{{ display.label || key | translate }}:</label>\
+          <div class="col-sm-10 multi-select" ng-if="data.isQualifyingProject">\
+            <div class="error-message" ng-if="display.error.length > 0">{{ display.error }}</div>\
+            <model-field-multi-select key="key" property="property" options="display.options" ng-disabled="display.readonly" model-data="data" ng-model="data[key]" class="field" ng-blur="ngEditReason({key: key})"/>\
+            <div class="model-field-description" ng-if="display.description">{{ display.description | translate }}</div>\
+            <div class="model-field-edit-reason" ng-if="display.editReason">\
+              <span> <b>Reason for Change</b>: {{ display.editReason.reason ===  \'Other\' ?  display.editReason.reasonText : display.editReason.reason }}</span>\
+            </div>\
+          </div>';
+        break;
       case 'multi-select':
         template = '<label class="col-sm-2 control-label">{{ display.label || key | translate }}:</label>\
           <div class="col-sm-10 multi-select">\

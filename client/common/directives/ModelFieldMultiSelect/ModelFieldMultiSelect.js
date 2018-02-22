@@ -25,6 +25,8 @@ angular.module('dashboard.directives.ModelFieldMultiSelect', [])
       ngBlur: '&',
     },
     link: function(scope, element, attrs, ngModel) {
+
+      console.log("scope ->", scope);
       
       var property = scope.property;
       var hasDataChanged;
