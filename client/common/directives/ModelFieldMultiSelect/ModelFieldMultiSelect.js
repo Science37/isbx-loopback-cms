@@ -1,14 +1,20 @@
 angular.module('dashboard.directives.ModelFieldMultiSelect', [])
 
-.directive('modelFieldMultiSelect', function($compile, $timeout) {
+.directive('modelFieldMultiSelect', function($compile, $timeout, GeneralModelService) {
   "ngInject";
 
-  function getTemplate() {
+  function getTemplate(key) {
+
+    console.log('key ->', key);
+
     var template =
-      '<div class="select-item checkbox-container" ng-repeat="item in multiSelectOptions">' +
-        '<input type="checkbox" class="field" ng-attr-id="{{key+\'-\'+$index}}" ng-model="selected[$index]" ng-checked="selected[$index]" ng-disabled="disabled" ng-change="clickMultiSelectCheckbox($index, item)">' +
-        '<label class="checkbox-label" ng-attr-for="{{key+\'-\'+$index}}">{{ item.value }}</label>' +
-      '</div>';
+      `<div class="select-item checkbox-container" ng-repeat="item in multiSelectOptions">
+        <input type="checkbox" class="field" ng-attr-id="{{key+\'-\'+$index}}" ng-model="selected[$index]" ng-checked="selected[$index]" ng-disabled="disabled" ng-change="clickMultiSelectCheckbox($index, item)">
+        ${key === 'statuses' ? `<label class="checkbox-label" ng-attr-for="{{key+\'-\'+$index}}"><span class="{{item.key}}">{{ item.value }}</span></label>`: `<label class="checkbox-label" ng-attr-for="{{key+\'-\'+$index}}"><{{ item.value }}</label>` }
+      </div>`;
+
+    console.log('template ->', template);
+
     return template;
   }
 
@@ -26,8 +32,6 @@ angular.module('dashboard.directives.ModelFieldMultiSelect', [])
     },
     link: function(scope, element, attrs, ngModel) {
 
-      console.log("scope ->", scope);
-      
       var property = scope.property;
       var hasDataChanged;
       
@@ -43,15 +47,33 @@ angular.module('dashboard.directives.ModelFieldMultiSelect', [])
         //Handle translating multi-select checks to scope.data output format
         scope.clickMultiSelectCheckbox = clickMultiSelectCheckbox;
 
-        element.html(getTemplate()).show();
-        $compile(element.contents())(scope);
+        if (scope.options && scope.options.api) {
+          let apiPath = scope.options.api;
+          let params = {};
+          GeneralModelService.list(apiPath, params, {preventCancel: true}).then(function(response) {
+            if (!response) return; //in case http request was cancelled by newer request
+            scope.multiSelectOptions = response;
+            element.html(getTemplate(scope.key)).show();
+            $compile(element.contents())(scope);
 
-        scope.$on('removeModelFieldMultiSelect', function($event, key) {
-          if (key !== scope.key) return;
-          $timeout(function() {
-            initData();
-          }, 1)
-        })
+            scope.$on('removeModelFieldMultiSelect', function($event, key) {
+              if (key !== scope.key) return;
+              $timeout(function() {
+                initData();
+              }, 1)
+            })
+          });
+        } else {
+          element.html(getTemplate(scope.key)).show();
+          $compile(element.contents())(scope);
+
+          scope.$on('removeModelFieldMultiSelect', function($event, key) {
+            if (key !== scope.key) return;
+            $timeout(function() {
+              initData();
+            }, 1)
+          })
+        }
       }
 
       /**
