@@ -7,11 +7,11 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
     var template =
       '<div class="select-all">'+
         '<input type="checkbox" class="field" ng-attr-id="select-all" ng-model="selectAll" ng-disabled="disabled" ng-change="selectAllChange(selectAll)">' +
-        '<label class="checkbox-label" ng-attr-for="select-all"><span class="select-all">Select All</span></label>' +
+        '<label class="checkbox-label status" ng-attr-for="select-all"><span class="select-all">Select All</span></label>' +
       '</div><br>' +
       '<div class="select-item checkbox-container" ng-repeat="item in multiSelectOptions">' +
         '<input type="checkbox" class="field" ng-attr-id="{{key+\'-\'+$index}}" ng-model="selected[$index]" ng-checked="selected[$index]" ng-disabled="disabled" ng-change="clickMultiSelectCheckbox($index, item)">' +
-        '<label class="checkbox-label" ng-attr-for="{{key+\'-\'+$index}}"><span class="{{item.key}}">{{ item.value }}</span></label>' +
+        '<label class="checkbox-label status" ng-attr-for="{{key+\'-\'+$index}}"><span class="{{item.key}}">{{ item.value }}</span></label>' +
       '</div>';
     return template;
   }
@@ -49,6 +49,8 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
         //Handle translating multi-select checks to scope.data output format
         scope.clickMultiSelectCheckbox = clickMultiSelectCheckbox;
         scope.selectAllChange = selectAllChange;
+
+        console.log('scope ->', scope);
         
         let apiPath = scope.options && scope.options.api ? scope.options.api : '';
         let params = {};
@@ -65,6 +67,21 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
           scope.multiSelectOptions = response;
           element.html(getTemplate()).show();
           $compile(element.contents())(scope);
+
+          if (scope.modelData && scope.modelData.trialId) {
+            let apiPath = scope.modelData.isQualifyingProject ? scope.options.qualifyingStatusApi : scope.options.trialApi;
+            let output = {};
+            let index;
+            apiPath += scope.modelData.trialId;
+            GeneralModelService.list(apiPath, {}, {preventCancel: true}).then(function(response) {
+              for (var i=0; i<response.length; i++) {
+                index = _.findIndex(scope.multiSelectOptions, {key: response[i].status});
+                scope.selected[index] = true;
+                output[scope.multiSelectOptions[index].key] = scope.multiSelectOptions[index].value;
+              }
+              scope.data = output;
+            })
+          }
 
           scope.$on('removeModelFieldMultiSelect', function($event, key) {
             if (key !== scope.key) return;
@@ -180,9 +197,6 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
         hasDataChanged = true;
         var output = property.display.output === 'array' ? [] : property.display.output === 'object' ? {} : '';
 
-        console.log('output ->', output);
-        console.log('scope.selected ->', scope.selected);
-
         if (scope.selected.indexOf(false) > -1) {
           scope.selectAll = false;
         }
@@ -217,6 +231,11 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
           hasDataChanged = false
         // this may cause a non optimal user experience, but reducing ability to bypass the check
         }, 1);
+      
+        if (scope.selected.indexOf(true) < 0) {
+          console.log('we get here...');
+          delete scope.data;
+        }
 
         // Note: breaking changes on onModelFieldMultiSelectCheckboxClick emit below after Angular 1.6.4 upgrade
         // due to ModelFieldMultiSelect rewrite
