@@ -49,11 +49,9 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
         //Handle translating multi-select checks to scope.data output format
         scope.clickMultiSelectCheckbox = clickMultiSelectCheckbox;
         scope.selectAllChange = selectAllChange;
-
-        console.log('scope ->', scope);
         
-        let apiPath = scope.options && scope.options.api ? scope.options.api : '';
-        let params = {};
+        const apiPath = scope.options && scope.options.api ? scope.options.api : '';
+        var params = {};
         GeneralModelService.list(apiPath, params, {preventCancel: true}).then(function(response){
           if (!response) return;
 
@@ -69,9 +67,9 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
           $compile(element.contents())(scope);
 
           if (scope.modelData && scope.modelData.trialId) {
-            let apiPath = scope.modelData.isQualifyingProject ? scope.options.qualifyingStatusApi : scope.options.trialApi;
-            let output = {};
-            let index;
+            const apiPath = scope.modelData.isQualifyingProject ? scope.options.qualifyingStatusApi : scope.options.trialApi;
+            var output = {};
+            var index;
             apiPath += scope.modelData.trialId;
             GeneralModelService.list(apiPath, {}, {preventCancel: true}).then(function(response) {
               for (var i=0; i<response.length; i++) {
@@ -79,7 +77,7 @@ angular.module('dashboard.directives.ModelFieldApiMultiSelect', [])
                 scope.selected[index] = true;
                 output[scope.multiSelectOptions[index].key] = scope.multiSelectOptions[index].value;
               }
-              scope.data = output;
+              if (response.length > 0) scope.data = output;
             })
           }
 
