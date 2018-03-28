@@ -40,19 +40,19 @@ angular.module('dashboard.services.Session', [
 		$cookieStore.remove('roles');
 		$cookieStore.remove('session');
     $cookieStore.remove('lastActive');
-	  return Utils.apiHelper('POST', authModel + '/logout?access_token=' + accessToken);
+	  return Utils.apiHelper('POST', authModel + '/logout', {'accessToken': accessToken});
   };
 
   this.setSession = function(userInfo) {
     var authModel = "Users";
     if (config.authModel) authModel = config.authModel;
-    return Utils.apiHelper('GET', authModel + '/' + userInfo.userId + '/Roles?access_token=' + userInfo.id)
+    return Utils.apiHelper('GET', authModel + '/' + userInfo.userId + '/Roles', {'accessToken': userInfo.id})
       .then(function(roles) {
         $cookies.put('lastActive', new Date());//initiallize after successful login
         session = userInfo;
+        $cookies.put('accessToken', userInfo.id);
         $cookies.put('username', userInfo.user.username);
         $cookies.put('userId', userInfo.userId);
-        $cookies.put('accessToken', userInfo.id);
         $cookies.put('session', JSON.stringify(session));
         $cookies.put('roles', JSON.stringify(roles));
         return userInfo;

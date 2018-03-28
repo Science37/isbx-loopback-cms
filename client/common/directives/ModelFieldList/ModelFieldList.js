@@ -35,7 +35,7 @@ angular.module('dashboard.directives.ModelFieldList', [
           </div> \
         </div> \
         <div class="action"> \
-          <a href="" ng-click="removeItem(index)" class="remove" ng-hide="disabled || list[index].isDisabled"><i class="fa fa-times"></i></a> \
+          <a href="" ng-if="!disableDelete" ng-click="removeItem(index)" class="remove" ng-hide="disabled || list[index].isDisabled"><i class="fa fa-times"></i></a> \
         </div> \
       </li> \
     </ul>\
@@ -50,7 +50,8 @@ angular.module('dashboard.directives.ModelFieldList', [
       options: '=options',
       data: '=ngModel',
       modelData: '=modelData',
-      disabled: '=ngDisabled'
+      disabled: '=ngDisabled',
+      disableDelete: '=ngDisableDelete'
     },
     link: function(scope, element, attrs) {
 

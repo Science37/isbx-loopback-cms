@@ -14,7 +14,7 @@ angular.module('dashboard.services.GeneralModel', [
    * Returns a list of models given filter params (see loopback.io filters)
    */
   this.list = function(apiPath, params, options) {
-    var apiPath = apiPath + (apiPath.indexOf('?')>-1 ? '&' : '?') + 'access_token=' + $cookies.get('accessToken');
+    var apiPath = apiPath + (apiPath.indexOf('?')>-1 ? '&' : '?');
     if (!options || !options.preventCancel) Utils.apiCancel('GET', apiPath); //cancels any prior calls to method + path
     return Utils.apiHelper('GET', apiPath, params);
   };
@@ -34,7 +34,7 @@ angular.module('dashboard.services.GeneralModel', [
         params.where = params.filter.where;
       }
     }
-    apiPath = apiPath + '/count?access_token=' + $cookies.get('accessToken');
+    apiPath = apiPath + '/count';
     Utils.apiCancel('GET', apiPath); //cancels any prior calls to method + path
     return Utils.apiHelper('GET', apiPath, params);
   };
@@ -43,7 +43,7 @@ angular.module('dashboard.services.GeneralModel', [
    * Get the model data for a particular ID
    */
   this.get = function(model, id, params) {
-    var apiPath = model + '/' + id + '?access_token=' + $cookies.get('accessToken');
+    var apiPath = model + '/' + id;
     //Below Utils.apiCancel() call appears to break when getting user profile
     //Utils.apiCancel('GET', apiPath); //cancels any prior calls to method + path
     return Utils.apiHelper('GET', apiPath, params);
@@ -53,15 +53,14 @@ angular.module('dashboard.services.GeneralModel', [
    * For loopback.io hasMany relationship (see ModelFieldReference directive)
    */
   this.getMany = function(sourceModel, sourceId, relationship, params, options) {
-    var path = sourceModel + '/' + sourceId + '/' + relationship;
-    var apiPath = path + '?access_token=' + $cookies.get('accessToken');
+    var apiPath = sourceModel + '/' + sourceId + '/' + relationship;
     if (!options || !options.preventCancel) Utils.apiCancel('GET', apiPath); //cancels any prior calls to method + path
     return Utils.apiHelper('GET', apiPath, params);
   };
 
 
   this.sort = function(model, key, sortField, sortData) {
-    var path = Config.serverParams.cmsBaseUrl + '/model/sort?access_token=' + $cookies.accessToken;
+    var path = Config.serverParams.cmsBaseUrl + '/model/sort';
     var params = {
         model: model,
         key: key,
@@ -79,7 +78,6 @@ angular.module('dashboard.services.GeneralModel', [
     if (id) {
       path = path + '/' + id;
     }
-    path += '?access_token=' + $cookies.get('accessToken');
     return Utils.apiHelper('DELETE', path, {});
 
   };
@@ -88,8 +86,7 @@ angular.module('dashboard.services.GeneralModel', [
    * Helper POST method
    */
   this.post = function(path, params) {
-    var apiPath = path + '?access_token=' + $cookies.get('accessToken');
-    return Utils.apiHelper('POST', apiPath, params);
+    return Utils.apiHelper('POST', path, params);
   };
 
 

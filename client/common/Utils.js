@@ -2,7 +2,7 @@ angular.module('dashboard.Utils', [
   'dashboard.Config'
 ])
 
-.service('Utils', function(Config, $http, $q) {
+.service('Utils', function(Config, $http, $q, $cookies) {
   "ngInject";
 
   var apiRequests = {}; //stores active http requests using method+path as key
@@ -23,6 +23,8 @@ angular.module('dashboard.Utils', [
    */
   this.apiHelper = function(method, path, data, params) {
     var deferred = $q.defer();
+    var accessToken = '';
+    var dataCopy = data ? JSON.parse(JSON.stringify(data)) : {};
     params = params || {};
     params.method = method;
     if (path[0] == "/") {
@@ -42,6 +44,9 @@ angular.module('dashboard.Utils', [
     
     apiRequests[method+":"+path] = deferred;
     params.timeout = deferred.promise; 
+    params.params && params.params.accessToken ? delete params.params.accessToken : '';
+    accessToken = dataCopy.accessToken ? dataCopy.accessToken : $cookies.get('accessToken');
+    params.headers = {'Authorization': accessToken};
     $http(params)
       .then(function(response) {
         deferred.resolve(response.data);

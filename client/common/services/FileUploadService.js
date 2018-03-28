@@ -12,7 +12,6 @@ angular.module('dashboard.services.FileUpload', [
 
   this.getS3Credentials = function(path, fileType, isRegistrySurvey) {
     var params = {
-        access_token: $cookies.get('accessToken'),
         path: path,
         fileType: fileType,
         r: new Date().getTime(), //IE caches results so passing timestamp helps with cache prevention
