@@ -22,7 +22,7 @@
  THE SOFTWARE.
  */
 
-var uuid = require('node-uuid');
+var uuid = require("node-uuid");
 var moment = require("moment");
 var crypto = require("crypto");
 
@@ -38,50 +38,55 @@ var awsConfig;
 function getS3Credentials(path, fileType, callback) {
   var acceptableFileTypes = awsConfig.s3.path[path];
   if (!acceptableFileTypes) {
-    callback({translate: 'cms.error.aws.invalid_path', message: "Invalid path value"});
+    callback({ translate: "cms.error.aws.invalid_path", message: "Invalid path value" });
     return;
   }
   if (fileType == undefined || fileType == null) {
-    callback({translate: 'cms.error.aws.no_filetype', message: "Please provide a fileType"});
+    callback({ translate: "cms.error.aws.no_filetype", message: "Please provide a fileType" });
     return;
   }
   var fileExtension = acceptableFileTypes[fileType];
   if (!fileExtension) {
-    callback({translate: 'cms.error.aws.invalid_filetype', message: "Invalid fileType for path"});
+    callback({ translate: "cms.error.aws.invalid_filetype", message: "Invalid fileType for path" });
     return;
-  } 
+  }
   var expirationLength = 900; //15min
-  var expirationDate = moment().add(expirationLength, 'seconds').toISOString();
+  var expirationDate = moment()
+    .add(expirationLength, "seconds")
+    .toISOString();
   var maxFileSize = awsConfig.s3.maxFileSize ? awsConfig.s3.maxFileSize : 5242880; //default to 5MB
   var policy = {
-          expiration: expirationDate,
-          conditions: [{ bucket: awsConfig.s3.bucket },
-                       { acl: "private" },
-                       { success_action_status: "201" },
-                       ["starts-with", "$key", path + "/"],
-                       //["starts-with", "$Content-Type", fileType],
-                       ["starts-with", "$Cache-Control", "max-age=31536000"], // 1 year
-                       ["content-length-range", 0, maxFileSize]
-          ]
+    expiration: expirationDate,
+    conditions: [
+      { bucket: awsConfig.s3.bucket },
+      { acl: "private" },
+      { success_action_status: "201" },
+      ["starts-with", "$key", path + "/"],
+      ["starts-with", "$Content-Type", fileType],
+      ["starts-with", "$Cache-Control", "max-age=31536000"], // 1 year
+      ["content-length-range", 0, maxFileSize]
+    ]
   };
 
-  var base64Policy = new Buffer(JSON.stringify(policy)).toString('base64');
+  var base64Policy = new Buffer(JSON.stringify(policy)).toString("base64");
   var hmac = crypto.createHmac("sha1", awsConfig.secretAccessKey);
   var hash2 = hmac.update(base64Policy);
-  var signature = hmac.digest(encoding="base64");
-  var uploadUrl = awsConfig.s3.uploadUrl ? awsConfig.s3.uploadUrl : "https://"+awsConfig.s3.bucket+".s3.amazonaws.com";
+  var signature = hmac.digest((encoding = "base64"));
+  var uploadUrl = awsConfig.s3.uploadUrl
+    ? awsConfig.s3.uploadUrl
+    : "https://" + awsConfig.s3.bucket + ".s3.amazonaws.com";
   var credentials = {
-          uploadUrl: uploadUrl,
-          expirationDate: expirationDate,
-          uniqueFilePath: path + "/" + uuid.v1() + "." + fileExtension,
-          AWSAccessKeyId: awsConfig.accessKeyId,
-          success_action_status: "201",
-          "Content-Type": fileType,
-          policy: base64Policy,
-          signature: signature
+    uploadUrl: uploadUrl,
+    expirationDate: expirationDate,
+    uniqueFilePath: path + "/" + uuid.v1() + "." + fileExtension,
+    AWSAccessKeyId: awsConfig.accessKeyId,
+    success_action_status: "201",
+    "Content-Type": fileType,
+    policy: base64Policy,
+    signature: signature
   };
   callback(null, credentials);
-};
+}
 
 module.exports = {
   setConfig: function(config) {
