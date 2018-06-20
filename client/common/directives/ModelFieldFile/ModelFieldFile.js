@@ -33,14 +33,8 @@ angular
         <button ng-if="filename" class="btn btn-danger fa fa-trash" ng-click="clear($event)" ng-hide="disabled"></button> \
         <span class="file-upload-info" ng-if="filename"> \
           <i class="fa {{getFileIcon(filename)}}"></i>&nbsp;&nbsp;{{ filename }}&nbsp;&nbsp; \
-          <span ng-if="fileUrl">( \
-            <span ng-if="ngCanDownloadFile"> \
-              <a download href="{{fileUrl}}">download</a> \
-            </span> \
-            <span ng-if="previewUrl && ngCanDownloadFile"> | </span> \
-            <span ng-if="previewUrl"> \
-              <a target="_blank" href="{{previewUrl}}">view</a> \
-            </span>) \
+          <span ng-if="fileUrl">\
+              ( <a download href="{{fileUrl}}">view</a> ) \
           </span> \
         </span> \
         <div ng-file-drop="onFileSelect($files)" ng-file-drag-over-class="optional-css-class-name-or-function" ng-show="dropSupported" class="file-drop">Drop File Here</div>',
@@ -50,8 +44,7 @@ angular
         disabled: "=ngDisabled",
         data: "=ngModel",
         modelData: "=modelData",
-        ngChange: "&",
-        ngCanDownloadFile: "="
+        ngChange: "&"
       },
       link: function(scope, element, attrs) {
         scope.selectFileButtonText = "Select File";
