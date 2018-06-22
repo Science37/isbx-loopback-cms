@@ -236,7 +236,7 @@ angular
             .upload({
               url: credentials.uploadUrl, //S3 upload url including bucket name,
               method: "POST",
-              data: self.getFileUploadData(credentials),
+              data: self.getFileUploadData(credentials, file.type),
               file: file
             })
             .progress(function(event) {
