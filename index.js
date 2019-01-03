@@ -455,6 +455,6 @@ function cms(loopbackApplication, options) {
   });
 
   app.get('*', renderIndex);
-  app.use(AWSXRay.express.closeSegment());
+  // app.use(AWSXRay.express.closeSegment());
   return app;
 }
