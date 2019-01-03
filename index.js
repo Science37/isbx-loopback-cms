@@ -391,7 +391,7 @@ function cms(loopbackApplication, options) {
     });
   });
 
-  app.use(AWSXRay.express.closeSegment());
+  // app.use(AWSXRay.express.closeSegment());
   /**
    * get an array from req.body containing an updated sort order for a set of models
    * req.body = {
@@ -455,6 +455,6 @@ function cms(loopbackApplication, options) {
   });
 
   app.get('*', renderIndex);
-  // app.use(AWSXRay.express.closeSegment());
+  app.use(AWSXRay.express.closeSegment());
   return app;
 }
