@@ -305,7 +305,7 @@ function cms(loopbackApplication, options) {
 
   app.use('/dist', express.static(__dirname + '/dist'));
   app.use('/vendor', express.static(__dirname + '/vendor'));
-  app.use(AWSXRay.express.openSegment('albertoc9-CMS-monolith'));
+  app.use(AWSXRay.express.openSegment(environment + '-CMS-monolith'));
 
   app.get('/dev-templates.js', function(req, res) {
     res.setHeader('content-type', 'text/javascript');
@@ -391,7 +391,6 @@ function cms(loopbackApplication, options) {
     });
   });
 
-  // app.use(AWSXRay.express.closeSegment());
   /**
    * get an array from req.body containing an updated sort order for a set of models
    * req.body = {
