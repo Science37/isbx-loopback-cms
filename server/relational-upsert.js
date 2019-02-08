@@ -49,6 +49,21 @@ const log = function() {
 };
 
 /**
+ * @description Gets the whitelist of models editable by the CMS
+ * @return {[String]} Array of names of models in the whitelist. If no whitelist is used, returns {Boolean]} false
+ */
+const getWhitelist = () => {
+  try {
+    { enabled, whitelist } = app.settings.levels.cms.modelWhitelist;
+    if (!enabled || !whitelist) return false;
+    return whitelist;
+  } catch (error) {
+    log(error);
+    return false;
+  }
+}
+
+/**
  * Performs a recursive upsert into the data source via loopback API calls
  * - Upsert relationship data models first
  * - Upsert main model data last
