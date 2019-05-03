@@ -30,6 +30,19 @@ var RELATIONSHIP_MANY = "RELATIONSHIP_MANY";
 var relationshipKeys = [];
 var relationshipManyToManyKeys = [];
 
+const whitelist = [
+  'Lead',
+  'Site',
+  'Sponsor',
+  'Vendor',
+  'Contact',
+  'AdverseEvent',
+  'ContactTypes',
+  'Diagnosis',
+  'Medication',
+  'Pathogen'
+];
+
 /**
  * @description Determines whether to log verbosely or not. Required since app is not available on file load.
  * @return {Boolean} Whether to log verbosely
@@ -52,7 +65,9 @@ const log = function() {
  * @description Gets the whitelist of models editable by the CMS
  * @return {[String]} Array of names of models in the whitelist. If no whitelist is used, returns {Boolean]} false
  */
-const getWhitelist = () => {
+const getWhitelist = function() {
+  return whitelist;
+  /*
   try {
     { enabled, whitelist } = app.settings.levels.cms.modelWhitelist;
     if (!enabled || !whitelist) return false;
@@ -61,6 +76,7 @@ const getWhitelist = () => {
     log(error);
     return false;
   }
+  */
 }
 
 /**
