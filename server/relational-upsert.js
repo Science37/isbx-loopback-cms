@@ -98,7 +98,7 @@ function start(model, data, callback) {
   if (!whitelist.includes(model.definition.name)) {
     var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
     console.error("ERROR: " + message);
-    callback({ error: message });
+    callback({ error: message, code: 403 });
     return; 
   }
 
