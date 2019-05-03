@@ -94,7 +94,8 @@ function upsert(data, callback) {
 function start(model, data, callback) {
   var index = 0;
 
-  if (whitelist.includes(model.definition.name)) {
+  console.log("attempting to upsert: "+model.definition.name);
+  if (!whitelist.includes(model.definition.name)) {
     var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
     console.error("ERROR: " + message);
     callback({ error: message });
