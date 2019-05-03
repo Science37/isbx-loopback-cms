@@ -30,6 +30,19 @@ var RELATIONSHIP_MANY = "RELATIONSHIP_MANY";
 var relationshipKeys = [];
 var relationshipManyToManyKeys = [];
 
+const whitelist = [
+  'Lead',
+  'Site',
+  'Sponsor',
+  'Vendor',
+  'Contact',
+  'AdverseEvent',
+  'ContactTypes',
+  'Diagnosis',
+  'Medication',
+  'Pathogen'
+];
+
 /**
  * Performs a recursive upsert into the data source via loopback API calls
  * - Upsert relationship data models first
