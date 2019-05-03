@@ -94,7 +94,7 @@ function upsert(data, callback) {
 function start(model, data, callback) {
   var index = 0;
 
-  console.log("attempting to upsert: "+model.definition.name);
+  console.log("attempting to upsert model: "+model.definition.name);
   if (!whitelist.includes(model.definition.name)) {
     var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
     console.error("ERROR: " + message);
@@ -162,6 +162,14 @@ function next(processRelationshipType, model, data, index, callback) {
     index++;
     next(processRelationshipType, model, data, index, callback);
     return;
+  }
+
+  console.log("attempting to upsert relationshipModel: "+relationshipModel.definition.name);
+  if (!whitelist.includes(model.definition.name)) {
+    var message = "cannot update a relationshipModel not on the whitelist: '"+relationshipModel.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message, code: 403 }, index);
+    return; 
   }
 
   if (processRelationshipType == RELATIONSHIP_SINGLE) {
@@ -316,6 +324,14 @@ function upsertManyToMany(model, data, relationshipKey, relationshipData, relati
  * @param callback
  */
 function nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback) {
+  console.log("attempting to upsert junctionModel: "+relationshipModel.definition.name);
+  if (!whitelist.includes(junctionModel.definition.name)) {
+    var message = "cannot update a relationshipModel not on the whitelist: '"+junctionModel.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message, code: 403 }, 0);
+    return; 
+  }
+
   if (!relationshipData) {
     callback(null, 0)
     return
