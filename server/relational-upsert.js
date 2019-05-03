@@ -93,6 +93,14 @@ function upsert(data, callback) {
  */
 function start(model, data, callback) {
   var index = 0;
+
+  if (whitelist.includes(model.definition.name)) {
+    var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message });
+    return; 
+  }
+
   next(RELATIONSHIP_SINGLE, model, data, index, function(error, count) {
     //After inserting all one-to-many relationships, perform the primary model upsert
     model.upsert(data, function(error, result) {
