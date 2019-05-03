@@ -112,6 +112,13 @@ function upsert(data, callback) {
  * @param callback
  */
 function start(model, data, callback) {
+  if (!getWhitelist().includes(model.definition.name)) {
+    var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message });
+    return; 
+  }
+
   log('Beginning CMS relational upsert', data);
   var index = 0;
   next(RELATIONSHIP_SINGLE, model, data, index, function(error, count) {
@@ -149,7 +156,6 @@ function start(model, data, callback) {
  * @param callback
  */
 function next(processRelationshipType, model, data, index, callback) {
-
   var length = processRelationshipType == RELATIONSHIP_SINGLE ? relationshipKeys.length : relationshipManyToManyKeys.length;
   if (index >= length) {
     //Finished processing all relationship data for the given type
@@ -174,6 +180,14 @@ function next(processRelationshipType, model, data, index, callback) {
   var relationshipModel = app.models[relationSettings.model];
   if (!relationshipModel) {
     console.warn("WARNING: cannot resolve relationship model = " + relationSettings.model);
+    index++;
+    next(processRelationshipType, model, data, index, callback);
+    return;
+  }
+
+  if (!getWhitelist().includes(relationshipModel.definition.name)) {
+    var message = "cannot update a relationshipModel not on the whitelist: '"+relationshipModel.definition.name+"'";
+    console.error("WARNING: " + message);
     index++;
     next(processRelationshipType, model, data, index, callback);
     return;
@@ -264,6 +278,13 @@ function upsertManyToMany(model, data, relationshipKey, relationshipData, relati
 
   if (!junctionRelationIdKey) {
     var message = "upsertManyToMany cannot proceed as no relation named '" + relationSettings.model + "' exists in " + junctionSettings.model + " JSON definition";
+    console.error("ERROR: " + message);
+    callback({ error: message });
+    return;
+  }
+
+  if (!getWhitelist().includes(junctionModel.definition.name)) {
+    var message = "cannot update a junctionModel not on the whitelist: '"+junctionModel.definition.name+"'";
     console.error("ERROR: " + message);
     callback({ error: message });
     return;
