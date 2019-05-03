@@ -372,7 +372,7 @@ function cms(loopbackApplication, options) {
         relationalUpsert.upsert(data, function(error, response) {
           if (error) {
             if (error.code) {
-              res.status(code).send(error);
+              res.status(error.code).send(error);
             } else {
               res.status(500).send(error);
             }
