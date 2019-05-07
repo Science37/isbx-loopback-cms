@@ -30,6 +30,20 @@ var RELATIONSHIP_MANY = "RELATIONSHIP_MANY";
 var relationshipKeys = [];
 var relationshipManyToManyKeys = [];
 
+const whitelist = [
+  'Lead',
+  'Site',
+  'Sponsor',
+  'Vendor',
+  'Contact',
+  'Trial',
+  'AdverseEvent',
+  'ContactTypes',
+  'Diagnosis',
+  'Medication',
+  'Pathogen'
+];
+
 /**
  * @description Determines whether to log verbosely or not. Required since app is not available on file load.
  * @return {Boolean} Whether to log verbosely
@@ -99,6 +113,14 @@ function upsert(data, callback) {
 function start(model, data, callback) {
   log('Beginning CMS relational upsert', data);
   var index = 0;
+
+  if (!whitelist.includes(model.definition.name)) {
+    var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message, code: 403 });
+    return; 
+  }
+
   next(RELATIONSHIP_SINGLE, model, data, index, function(error, count) {
     log('Result - finished RELATIONSHIP_SINGLE upsert', { error, count });
     //After inserting all one-to-many relationships, perform the primary model upsert
@@ -162,6 +184,13 @@ function next(processRelationshipType, model, data, index, callback) {
     index++;
     next(processRelationshipType, model, data, index, callback);
     return;
+  }
+
+  if (!whitelist.includes(model.definition.name)) {
+    var message = "cannot update a relationshipModel not on the whitelist: '"+relationshipModel.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message, code: 403 }, index);
+    return; 
   }
 
   if (processRelationshipType == RELATIONSHIP_SINGLE) {
@@ -319,6 +348,13 @@ function upsertManyToMany(model, data, relationshipKey, relationshipData, relati
  * @param callback
  */
 function nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback) {
+  if (!whitelist.includes(junctionModel.definition.name)) {
+    var message = "cannot update a relationshipModel not on the whitelist: '"+junctionModel.definition.name+"'";
+    console.error("ERROR: " + message);
+    callback({ error: message, code: 403 }, 0);
+    return; 
+  }
+
   if (!relationshipData) {
     callback(null, 0)
     return
