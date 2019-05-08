@@ -39,6 +39,8 @@ const whitelist = [
   'Trial',
   'TrialSite',
   'TrialVendor',
+  'Document',
+  'Media',
   'AdverseEvent',
   'ContactTypes',
   'Diagnosis',
