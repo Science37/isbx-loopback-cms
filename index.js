@@ -440,11 +440,11 @@ function cms(loopbackApplication, options) {
 
   app.get('*', renderIndex);
   
-  app.error(function(err, req, res, next){
-    console.log(err);
-    console.log('yipeeeeee!!!');
-    return res.status(500).send(err);
+  app.use(function (err, req, res, next) {
+    console.log('Try with middleware!!!');
+    console.error(err.stack);
+    res.status(500).send('Something went wrong!!');
   });
-
+  
   return app;
 }
