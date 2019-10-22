@@ -41,6 +41,7 @@ var relationshipManyToManyKeys = [];
  *  The callback with [error, result] params
  */
 function upsert(data, callback) {
+  throw Error("Bad error");
   var model = app.models[data.__model];
   if (!model) {
     var message = "model not found in post body __model = '"+data.__model+"'";
@@ -191,6 +192,7 @@ function next(processRelationshipType, model, data, index, callback) {
  * @param callback
  */
 function upsertManyToMany(model, data, relationshipKey, relationshipData, relationSettings, callback) {
+  throw Error("Bad error");
   if (!relationSettings.through) {
     var message = "upsertManyToMany cannot proceed as no relations." + relationshipKey + ".through exists in " + model.name + " JSON definition";
     console.error("ERROR: " + message);

@@ -37,7 +37,7 @@ var express = require('express')
   , settingsEditor = require('./server/settings-editor')
   , customSort = require('./server/sort')
   , aws = require('./server/aws.js')
-  , package = require('./package.json');
+  , package = require('./package.json')
   ;
 
 
@@ -439,6 +439,12 @@ function cms(loopbackApplication, options) {
   });
 
   app.get('*', renderIndex);
+  
+  app.error(function(err, req, res, next){
+    console.log(err);
+    console.log('yipeeeeee!!!');
+    return res.status(500).send(err);
+  });
 
   return app;
 }
