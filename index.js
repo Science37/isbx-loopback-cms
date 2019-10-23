@@ -446,5 +446,11 @@ function cms(loopbackApplication, options) {
     res.status(500).send('Something went wrong!!');
   });
   
+  
+  process.on('uncaughtException', function (err) {
+    console.log('doing nothing here!!!');
+    console.log(err);
+  })
+    
   return app;
 }
