@@ -161,7 +161,6 @@ function start(model, data, callback) {
     next(RELATIONSHIP_SINGLE, model, data, index, function(error, count) {
       log('Result - finished RELATIONSHIP_SINGLE upsert', { error, count });
       //After inserting all one-to-many relationships, perform the primary model upsert
-      throw Error('Bad Error');
       model.upsert(data, function(error, result) {
         log('Result - start - upsert', { name: model.definition.name, data, error, result });
         if (error) {
