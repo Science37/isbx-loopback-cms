@@ -45,6 +45,32 @@ const whitelist = [
   'Medication',
   'Pathogen'
 ];
+/**
+ * @description handles error logging and calls callback with error
+ * @return {Object} context object
+ */
+const handleError = function(error, context, callback) {
+  console.log(`
+    Unhandled error on: ${context.operation}, 
+    model type: ${context.model},
+    model id: ${context.modelId},
+    input: ${context.input} 
+    stacktrace: ${error.stack}`
+  );
+  callback({ error: 'Something went wrong'}); // this is the 500 message the client will see
+}
+/**
+ * @description formats context for logging
+ * @return {Object} context object
+ */
+const getContext = function(data, operation) {
+  return {
+    operation: operation,
+    model: data.__model ? data.__model : 'unknown',
+    modelId: data.__id ? data.__id : 'unknown', 
+    input: JSON.stringify(Object.keys(data))
+  }
+}
 
 /**
  * @description Determines whether to log verbosely or not. Required since app is not available on file load.
@@ -75,29 +101,34 @@ const log = function() {
  *  The callback with [error, result] params
  */
 function upsert(data, callback) {
-  var model = app.models[data.__model];
-  if (!model) {
-    var message = "model not found in post body __model = '"+data.__model+"'";
-    console.error("ERROR: " + message);
-    callback({ error: message });
-    return;
-  }
-
-  //Get all relationship keys by checking for nested objects
-  var keys = Object.keys(data);
-  relationshipKeys = [];
-  relationshipManyToManyKeys = [];
-  for (var i in keys) {
-    var relationshipKey = keys[i];
-    var relationshipData = data[relationshipKey];
-    if (!relationshipData || typeof relationshipData !== 'object') continue;
-    if (relationshipData instanceof Array) {
-      //Store Many-to-Many relationship keys separately so we can process them last
-      relationshipManyToManyKeys.push(relationshipKey);
-    } else {
-      //Store One-to-Many relationship keys separately so we can process them first
-      relationshipKeys.push(relationshipKey);
+  const context = getContext(data, 'CMS relational upsert: upsert');
+  try {
+    var model = app.models[data.__model];
+    if (!model) {
+      var message = "model not found in post body __model = '"+data.__model+"'";
+      console.error("ERROR: " + message);
+      callback({ error: message });
+      return;
     }
+  
+    //Get all relationship keys by checking for nested objects
+    var keys = Object.keys(data);
+    relationshipKeys = [];
+    relationshipManyToManyKeys = [];
+    for (var i in keys) {
+      var relationshipKey = keys[i];
+      var relationshipData = data[relationshipKey];
+      if (!relationshipData || typeof relationshipData !== 'object') continue;
+      if (relationshipData instanceof Array) {
+        //Store Many-to-Many relationship keys separately so we can process them last
+        relationshipManyToManyKeys.push(relationshipKey);
+      } else {
+        //Store One-to-Many relationship keys separately so we can process them first
+        relationshipKeys.push(relationshipKey);
+      }
+    }
+  } catch (e) {
+    handleError(e, context, callback);
   }
 
   start(model, data, function(error, result) {
@@ -113,39 +144,44 @@ function upsert(data, callback) {
  * @param callback
  */
 function start(model, data, callback) {
-  log('Beginning CMS relational upsert', data);
-  var index = 0;
-
-  if (!whitelist.includes(model.definition.name)) {
-    var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
-    console.error("ERROR: " + message);
-    callback({ error: message, code: 403 });
-    return; 
-  }
-
-  next(RELATIONSHIP_SINGLE, model, data, index, function(error, count) {
-    log('Result - finished RELATIONSHIP_SINGLE upsert', { error, count });
-    //After inserting all one-to-many relationships, perform the primary model upsert
-    model.upsert(data, function(error, result) {
-      log('Result - start - upsert', { name: model.definition.name, data, error, result });
-      if (error) {
-        console.error(error);
-        callback(error);
-      } else {
-        //make sure data contains the primary key ID value
-        var modelId = result[model.getIdName()];
-        data[model.getIdName()] = modelId;
-
-        //After upserting main model data, process all many-to-many relationship data last
-        index = 0;
-        next(RELATIONSHIP_MANY, model, data, index, function(error, count) {
-          log('Result - finished RELATIONSHIP_MANY upsert', { error, count })
-          callback(null, result); //finished upserting all relationship data and model data
-        });
-      }
+  const context = getContext(data, 'CMS relational upsert: start');
+  try {
+    log('Beginning CMS relational upsert', data, model);
+    var index = 0;
+  
+    if (!whitelist.includes(model.definition.name)) {
+      var message = "cannot update a model not on the whitelist: '"+model.definition.name+"'";
+      console.error("ERROR: " + message);
+      callback({ error: message, code: 403 });
+      return; 
+    }
+  
+    next(RELATIONSHIP_SINGLE, model, data, index, function(error, count) {
+      log('Result - finished RELATIONSHIP_SINGLE upsert', { error, count });
+      //After inserting all one-to-many relationships, perform the primary model upsert
+      model.upsert(data, function(error, result) {
+        log('Result - start - upsert', { name: model.definition.name, data, error, result });
+        if (error) {
+          console.error(error);
+          callback(error);
+        } else {
+          //make sure data contains the primary key ID value
+          var modelId = result[model.getIdName()];
+          data[model.getIdName()] = modelId;
+  
+          //After upserting main model data, process all many-to-many relationship data last
+          index = 0;
+          next(RELATIONSHIP_MANY, model, data, index, function(error, count) {
+            log('Result - finished RELATIONSHIP_MANY upsert', { error, count })
+            callback(null, result); //finished upserting all relationship data and model data
+          });
+        }
+      });
+  
     });
-
-  });
+  } catch (e){
+    handleError(e, context, callback);
+  }
 }
 
 /**
@@ -158,75 +194,77 @@ function start(model, data, callback) {
  * @param callback
  */
 function next(processRelationshipType, model, data, index, callback) {
-
-  var length = processRelationshipType == RELATIONSHIP_SINGLE ? relationshipKeys.length : relationshipManyToManyKeys.length;
-  if (index >= length) {
-    //Finished processing all relationship data for the given type
-    callback(null, index);
-    return;
+  const context = getContext(data, 'CMS relational upsert: next');
+  try {
+    var length = processRelationshipType == RELATIONSHIP_SINGLE ? relationshipKeys.length : relationshipManyToManyKeys.length;
+    if (index >= length) {
+      //Finished processing all relationship data for the given type
+      callback(null, index);
+      return;
+    }
+  
+    var relationshipKey;
+    if (processRelationshipType == RELATIONSHIP_SINGLE) {
+      relationshipKey = relationshipKeys[index];
+    } else {
+      relationshipKey = relationshipManyToManyKeys[index];
+    }
+    var relationshipData = data[relationshipKey];
+    var relationSettings = model.settings.relations[relationshipKey];
+    if (!relationSettings) {
+      console.warn("WARNING: no relationship found for relationshipKey = " + relationshipKey);
+      index++;
+      next(processRelationshipType, model, data, index, callback);
+      return;
+    }
+    var relationshipModel = app.models[relationSettings.model];
+    if (!relationshipModel) {
+      console.warn("WARNING: cannot resolve relationship model = " + relationSettings.model);
+      index++;
+      next(processRelationshipType, model, data, index, callback);
+      return;
+    }
+  
+    if (!whitelist.includes(model.definition.name)) {
+      var message = "cannot update a relationshipModel not on the whitelist: '"+relationshipModel.definition.name+"'";
+      console.error("ERROR: " + message);
+      callback({ error: message, code: 403 }, index);
+      return; 
+    }
+  
+    if (processRelationshipType == RELATIONSHIP_SINGLE) {
+      //upsert the one-to-many relationship model data before upserting main model data
+      relationshipModel.upsert(relationshipData, function(error, result) {
+        log('Result - next - upsert', { name: relationshipModel.definition.name, relationshipData, error, result });
+        if (error) {
+          console.error(error);
+          callback(error);
+        } else {
+          var id = result[relationshipModel.getIdName()];
+          //assign the FK ID back to main model
+          data[relationSettings.foreignKey] = id;
+          delete data[relationshipKey]; //make sure to remove relationship data from the main model (otherwise upsert won't work for the relationshipKey)
+          index++;
+          next(RELATIONSHIP_SINGLE, model, data, index, callback);
+        }
+      });
+    } else if (processRelationshipType == RELATIONSHIP_MANY) {
+      //relationshipData is an Array of hasMany values (a many-to-many relationship)
+      upsertManyToMany(model, data, relationshipKey, relationshipData, relationSettings, function(error, result) {
+        if (error) {
+          console.error(error);
+          log('Error - next - upsertManyToMany', error);
+          callback(error);
+        } else {
+          delete data[relationshipKey]; //make sure to remove relationship data from the main model (otherwise upsert won't work for the relationshipKey)
+          index++;
+          next(RELATIONSHIP_MANY, model, data, index, callback);
+        }
+      });
+    }
+  } catch (e) {
+    handleError(e, context, callback);
   }
-
-  var relationshipKey;
-  if (processRelationshipType == RELATIONSHIP_SINGLE) {
-    relationshipKey = relationshipKeys[index];
-  } else {
-    relationshipKey = relationshipManyToManyKeys[index];
-  }
-  var relationshipData = data[relationshipKey];
-  var relationSettings = model.settings.relations[relationshipKey];
-  if (!relationSettings) {
-    console.warn("WARNING: no relationship found for relationshipKey = " + relationshipKey);
-    index++;
-    next(processRelationshipType, model, data, index, callback);
-    return;
-  }
-  var relationshipModel = app.models[relationSettings.model];
-  if (!relationshipModel) {
-    console.warn("WARNING: cannot resolve relationship model = " + relationSettings.model);
-    index++;
-    next(processRelationshipType, model, data, index, callback);
-    return;
-  }
-
-  if (!whitelist.includes(model.definition.name)) {
-    var message = "cannot update a relationshipModel not on the whitelist: '"+relationshipModel.definition.name+"'";
-    console.error("ERROR: " + message);
-    callback({ error: message, code: 403 }, index);
-    return; 
-  }
-
-  if (processRelationshipType == RELATIONSHIP_SINGLE) {
-    //upsert the one-to-many relationship model data before upserting main model data
-    relationshipModel.upsert(relationshipData, function(error, result) {
-      log('Result - next - upsert', { name: relationshipModel.definition.name, relationshipData, error, result });
-      if (error) {
-        console.error(error);
-        callback(error);
-      } else {
-        var id = result[relationshipModel.getIdName()];
-        //assign the FK ID back to main model
-        data[relationSettings.foreignKey] = id;
-        delete data[relationshipKey]; //make sure to remove relationship data from the main model (otherwise upsert won't work for the relationshipKey)
-        index++;
-        next(RELATIONSHIP_SINGLE, model, data, index, callback);
-      }
-    });
-  } else if (processRelationshipType == RELATIONSHIP_MANY) {
-    //relationshipData is an Array of hasMany values (a many-to-many relationship)
-    upsertManyToMany(model, data, relationshipKey, relationshipData, relationSettings, function(error, result) {
-      if (error) {
-        console.error(error);
-        log('Error - next - upsertManyToMany', error);
-        callback(error);
-      } else {
-        delete data[relationshipKey]; //make sure to remove relationship data from the main model (otherwise upsert won't work for the relationshipKey)
-        index++;
-        next(RELATIONSHIP_MANY, model, data, index, callback);
-      }
-    });
-
-  }
-
 }
 
 /**
@@ -246,96 +284,99 @@ function next(processRelationshipType, model, data, index, callback) {
  * @param callback
  */
 function upsertManyToMany(model, data, relationshipKey, relationshipData, relationSettings, callback) {
-  if (!relationSettings.through) {
-    var message = "upsertManyToMany cannot proceed as no relations." + relationshipKey + ".through exists in " + model.name + " JSON definition";
-    console.error("ERROR: " + message);
-    //callback({ error: message });
-    callback();
-    return;
-  }
-
-  var junctionSettings = model.settings.relations[relationSettings.through];
-  if (!junctionSettings) junctionSettings = model.settings.relations[inflection.pluralize(relationSettings.through)];
-  if (!junctionSettings) {
-    var message = "upsertManyToMany cannot proceed as no model.settings.relations." + relationSettings.through + " or "+ inflection.pluralize(relationSettings.through) +" exists in " + model.name + " JSON definition";
-    console.error("ERROR: " + message);
-    //callback({ error: message });
-    callback();
-    return;
-  }
-
-  //Get the field key for the many-to-many relationship so we know what to insert into the Junction Table
-  var junctionModel = app.models[junctionSettings.model];
-  var junctionRelations = junctionModel.settings.relations;
-  var junctionRelationIdKey = null;
-  var keys = Object.keys(junctionRelations);
-  for (var i in keys) {
-    var key = keys[i];
-    var junctionRelationshipSettings = junctionRelations[key];
-    if (junctionRelationshipSettings.model == relationSettings.model) {
-      junctionRelationIdKey = junctionRelationshipSettings.foreignKey;
-      break;
+  const context = getContext(data, 'CMS relational upsert: upsertManyToMany');
+  try {
+    if (!relationSettings.through) {
+      var message = "upsertManyToMany cannot proceed as no relations." + relationshipKey + ".through exists in " + model.name + " JSON definition";
+      console.error("ERROR: " + message);
+      //callback({ error: message });
+      callback();
+      return;
     }
-  }
-
-  if (!junctionRelationIdKey) {
-    var message = "upsertManyToMany cannot proceed as no relation named '" + relationSettings.model + "' exists in " + junctionSettings.model + " JSON definition";
-    console.error("ERROR: " + message);
-    callback({ error: message });
-    return;
-  }
-
-  //Get Junction Table's Primary Model ID Field Key
-  var modelIdKey = model.getIdName();
-  var junctionModelIdKey = junctionSettings.foreignKey;
-  var modelId = data[modelIdKey];
-
-  if (!modelId) {
-    var message = "upsertManyToMany cannot proceed as no data[modelIdKey] found for modelIdKey = '" + modelIdKey + "'";
-    console.error("ERROR: " + message);
-    callback({ error: message });
-    return;
-  }
-
-  //Get Relation Mode's Primary Model ID Field Key
-  var relatedModel = app.models[relationSettings.model];
-  var relationIdKey = relatedModel.getIdName();
-
-  //FIRST Delete Any existing Primary Model's records from junction table
-  var where = {};
-  where[junctionModelIdKey] = modelId;
-  for (var i in relationshipData) {
-    var junctionData = relationshipData[i];
-    if (junctionData && junctionData[relationIdKey]) {
-      //delete only the junction table records matching the junction meta (this is import as not to delete records
-      //that should not be deleted (i.e. when 2 ModelFieldReference fields exists with different junctionMeta values)
-      if (junctionData.junctionMeta) {
-        var keys = Object.keys(junctionData.junctionMeta);
-        for (var i in keys) {
-          var key = keys[i];
-          if (typeof where[key] !== 'undefined' && where[key] != junctionData.junctionMeta[key]) {
-            if (typeof where[key] === 'string' || typeof where[key] === 'number') {
-              where[key] = {inq: [where[key]]};
+  
+    var junctionSettings = model.settings.relations[relationSettings.through];
+    if (!junctionSettings) junctionSettings = model.settings.relations[inflection.pluralize(relationSettings.through)];
+    if (!junctionSettings) {
+      var message = "upsertManyToMany cannot proceed as no model.settings.relations." + relationSettings.through + " or "+ inflection.pluralize(relationSettings.through) +" exists in " + model.name + " JSON definition";
+      console.error("ERROR: " + message);
+      //callback({ error: message });
+      callback();
+      return;
+    }
+  
+    //Get the field key for the many-to-many relationship so we know what to insert into the Junction Table
+    var junctionModel = app.models[junctionSettings.model];
+    var junctionRelations = junctionModel.settings.relations;
+    var junctionRelationIdKey = null;
+    var keys = Object.keys(junctionRelations);
+    for (var i in keys) {
+      var key = keys[i];
+      var junctionRelationshipSettings = junctionRelations[key];
+      if (junctionRelationshipSettings.model == relationSettings.model) {
+        junctionRelationIdKey = junctionRelationshipSettings.foreignKey;
+        break;
+      }
+    }
+  
+    if (!junctionRelationIdKey) {
+      var message = "upsertManyToMany cannot proceed as no relation named '" + relationSettings.model + "' exists in " + junctionSettings.model + " JSON definition";
+      console.error("ERROR: " + message);
+      callback({ error: message });
+      return;
+    }
+  
+    //Get Junction Table's Primary Model ID Field Key
+    var modelIdKey = model.getIdName();
+    var junctionModelIdKey = junctionSettings.foreignKey;
+    var modelId = data[modelIdKey];
+  
+    if (!modelId) {
+      var message = "upsertManyToMany cannot proceed as no data[modelIdKey] found for modelIdKey = '" + modelIdKey + "'";
+      console.error("ERROR: " + message);
+      callback({ error: message });
+      return;
+    }
+  
+    //Get Relation Mode's Primary Model ID Field Key
+    var relatedModel = app.models[relationSettings.model];
+    var relationIdKey = relatedModel.getIdName();
+  
+    //FIRST Delete Any existing Primary Model's records from junction table
+    var where = {};
+    where[junctionModelIdKey] = modelId;
+    for (var i in relationshipData) {
+      var junctionData = relationshipData[i];
+      if (junctionData && junctionData[relationIdKey]) {
+        //delete only the junction table records matching the junction meta (this is import as not to delete records
+        //that should not be deleted (i.e. when 2 ModelFieldReference fields exists with different junctionMeta values)
+        if (junctionData.junctionMeta) {
+          var keys = Object.keys(junctionData.junctionMeta);
+          for (var i in keys) {
+            var key = keys[i];
+            if (typeof where[key] !== 'undefined' && where[key] != junctionData.junctionMeta[key]) {
+              if (typeof where[key] === 'string' || typeof where[key] === 'number') {
+                where[key] = {inq: [where[key]]};
+              }
+              where[key]['inq'].push(junctionData.junctionMeta[key]);
+            } else {
+              where[key] = junctionData.junctionMeta[key]; //meta data for junction table
             }
-            where[key]['inq'].push(junctionData.junctionMeta[key]);
-          } else {
-            where[key] = junctionData.junctionMeta[key]; //meta data for junction table
           }
         }
       }
     }
+    const now = Date.now();
+    junctionModel.destroyAll(where, function(error, result) {
+      log('Result - upsertManyToMany - destroyAll', { name: junctionModel.definition.name, where, error, result });
+      //WARNING: Ignore errors here in case of referential integrity issues (however, may cause duplicates if no unique indexes are defined in junction table)
+      //SECOND Start inserting new records
+      var index = 0;
+      nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback);
+  
+    });
+  } catch (e){
+    handleError(e, context, callback);
   }
-  const now = Date.now();
-  junctionModel.destroyAll(where, function(error, result) {
-    log('Result - upsertManyToMany - destroyAll', { name: junctionModel.definition.name, where, error, result });
-    //WARNING: Ignore errors here in case of referential integrity issues (however, may cause duplicates if no unique indexes are defined in junction table)
-    //SECOND Start inserting new records
-    var index = 0;
-    nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback);
-
-  });
-
-
 }
 
 /**
@@ -350,46 +391,51 @@ function upsertManyToMany(model, data, relationshipKey, relationshipData, relati
  * @param callback
  */
 function nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback) {
-  if (!whitelist.includes(junctionModel.definition.name)) {
-    var message = "cannot update a relationshipModel not on the whitelist: '"+junctionModel.definition.name+"'";
-    console.error("ERROR: " + message);
-    callback({ error: message, code: 403 }, 0);
-    return; 
-  }
-
-  if (!relationshipData) {
-    callback(null, 0)
-    return
-  }
-
-  if (index >= relationshipData.length) {
-    callback(null, relationshipData.length);
-    return;
-  }
-
-  var data = relationshipData[index];
-  if (data && data[relationIdKey]) {
-    var junctionData = {};
-    junctionData[junctionModelIdKey] = modelId;
-    junctionData[junctionRelationIdKey] = data[relationIdKey];
-    if (data.junctionMeta) {
-      var keys = Object.keys(data.junctionMeta);
-      for (var i in keys) {
-        var key = keys[i];
-        junctionData[key] = data.junctionMeta[key]; //meta data for junction table
-      }
+  const context = getContext(relationshipData, 'CMS relational upsert: nextManyToMany');
+  try {
+    if (!whitelist.includes(junctionModel.definition.name)) {
+      var message = "cannot update a relationshipModel not on the whitelist: '"+junctionModel.definition.name+"'";
+      console.error("ERROR: " + message);
+      callback({ error: message, code: 403 }, 0);
+      return; 
     }
-    junctionModel.upsert(junctionData, function(error, result) {
-      log('Result - nextManyToMany - upsert', { name: junctionModel.definition.name, junctionData, error, result });
-      //WARNING: Ignoring errors in case insert duplicate record
+  
+    if (!relationshipData) {
+      callback(null, 0)
+      return
+    }
+  
+    if (index >= relationshipData.length) {
+      callback(null, relationshipData.length);
+      return;
+    }
+  
+    var data = relationshipData[index];
+    if (data && data[relationIdKey]) {
+      var junctionData = {};
+      junctionData[junctionModelIdKey] = modelId;
+      junctionData[junctionRelationIdKey] = data[relationIdKey];
+      if (data.junctionMeta) {
+        var keys = Object.keys(data.junctionMeta);
+        for (var i in keys) {
+          var key = keys[i];
+          junctionData[key] = data.junctionMeta[key]; //meta data for junction table
+        }
+      }
+      junctionModel.upsert(junctionData, function(error, result) {
+        log('Result - nextManyToMany - upsert', { name: junctionModel.definition.name, junctionData, error, result });
+        //WARNING: Ignoring errors in case insert duplicate record
+        index++;
+        nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback);
+      });
+    } else {
+      console.warn("WARNING: cannot resolve data[relationIdKey] where relationIdKey = " + junctionRelationIdKey);
       index++;
       nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback);
-    });
-  } else {
-    console.warn("WARNING: cannot resolve data[relationIdKey] where relationIdKey = " + junctionRelationIdKey);
-    index++;
-    nextManyToMany(junctionModel, junctionModelIdKey, junctionRelationIdKey, relationIdKey, modelId, relationshipData, index, callback);
-
+  
+    }
+  } catch (e) {
+    handleError(e, context, callback);
   }
 }
 
